@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>真実かチャレンジ！</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+<div id="app" class="max-w-2xl mx-auto p-4">
+  <h1 class="text-2xl font-bold text-center mb-6 text-pink-400">🎉 真実かチャレンジ！</h1>
+
+  <div id="setup-screen">
+    <div class="bg-gray-800 rounded-lg p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-3 text-yellow-300">プレイヤー登録（最大10人）</h2>
+      <div class="flex gap-2 mb-3">
+        <input id="player-name" type="text" placeholder="名前を入力..." class="flex-1 bg-gray-700 rounded px-3 py-2 text-white" aria-label="プレイヤー名">
+        <button id="add-player" class="bg-pink-600 hover:bg-pink-700 rounded px-4 py-2">追加</button>
+      </div>
+      <div id="player-list" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-3 text-yellow-300">難易度</h2>
+      <div class="flex gap-2">
+        <button class="diff-btn flex-1 py-2 rounded font-bold" data-diff="mild">マイルド 😊</button>
+        <button class="diff-btn flex-1 py-2 rounded font-bold" data-diff="normal">普通 😄</button>
+        <button class="diff-btn flex-1 py-2 rounded font-bold" data-diff="spicy">激辛 🔥</button>
+      </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-3 text-yellow-300">カスタムカード追加</h2>
+      <div class="flex gap-2 mb-2">
+        <select id="custom-type" class="bg-gray-700 rounded px-2 py-2 text-white text-sm">
+          <option value="truth">真実</option>
+          <option value="dare">チャレンジ</option>
+        </select>
+        <input id="custom-card" type="text" placeholder="カスタム質問/お題..." class="flex-1 bg-gray-700 rounded px-3 py-2 text-white text-sm">
+        <button id="add-card" class="bg-purple-600 hover:bg-purple-700 rounded px-3 py-2 text-sm">追加</button>
+      </div>
+    </div>
+
+    <button id="start-btn" class="w-full bg-pink-600 hover:bg-pink-700 rounded-lg py-4 text-xl font-bold">🎲 ゲームスタート！</button>
+  </div>
+
+  <div id="game-screen" class="hidden">
+    <div class="bg-gray-800 rounded-lg p-4 mb-4 text-center">
+      <div class="text-sm text-gray-400 mb-1">次のプレイヤー</div>
+      <div id="current-player" class="text-3xl font-bold text-yellow-400 mb-4"></div>
+      <div class="flex gap-3 justify-center">
+        <button id="truth-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 rounded-lg py-4 text-lg font-bold">🤔 真実</button>
+        <button id="dare-btn" class="flex-1 bg-red-600 hover:bg-red-700 rounded-lg py-4 text-lg font-bold">💪 チャレンジ</button>
+      </div>
+    </div>
+
+    <div id="card-display" class="hidden bg-gray-800 rounded-lg p-6 mb-4 text-center">
+      <div id="card-type-badge" class="inline-block px-3 py-1 rounded text-sm font-bold mb-3"></div>
+      <div id="card-text" class="text-xl font-bold text-white leading-relaxed"></div>
+    </div>
+
+    <button id="next-round" class="hidden w-full bg-green-600 hover:bg-green-700 rounded-lg py-3 font-bold">✅ 完了！次のプレイヤーへ</button>
+    <button id="end-game" class="mt-2 w-full bg-gray-700 hover:bg-gray-600 rounded-lg py-2 text-sm">ゲーム終了</button>
+  </div>
+</div>
+<script>
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const cards = {
+  truth: {
+    mild: [
+      '最近見た夢を教えて','一番好きな食べ物は？','今まで行った中で一番良かった旅行先は？',
+      '自分の一番の長所だと思うことは？','子どもの頃なりたかった職業は？',
+      '最近感動した映画やドラマは？','一番大切にしている物は？',
+      '今一番やってみたいことは？','あだ名があったら教えて','好きなアーティストは誰？',
+    ],
+    normal: [
+      '人生で一番恥ずかしかった出来事は？','今まで一番大きな失敗は？','初恋の話を聞かせて',
+      '最も苦手な人のタイプは？','過去に戻れるなら何をやり直したい？',
+      'SNSで盛った写真を投稿したことある？','人に言えない趣味はある？',
+      '今の仕事、本当にどう思ってる？','告白して振られた経験はある？','一番嫌いな食べ物を食べる演技をして',
+    ],
+    spicy: [
+      '今このメンバーで一番仲良くなりたい人は誰？','嘘をついてよかったと思う経験は？',
+      '人に言えない秘密を1つ明かして','過去の恋愛で後悔していることは？',
+      '今まで一番大きなお金のミスは？','このグループで一番面白い人と退屈な人は誰？',
+      '今最も気になっている人はいる？','人生で一番怖かった体験は？',
+      '自分の黒歴史を1つ語って','今すぐ転職したいと思ったことある？',
+    ],
+  },
+  dare: {
+    mild: [
+      '今すぐ好きな歌を1フレーズ歌って','左手だけで自分の名前を書いて',
+      '30秒間ロボットのように動いて','目を閉じて3秒以内に友達の名前を10人言って',
+      '手をグーにして肘から先で水を飲んで','今すぐ友達に「大好き」とLINEを送って',
+      '1分間「あ」以外の母音を使わずに話して','逆立ちに挑戦して（壁を使ってOK）',
+      '今の気持ちをダンスで表現して','目を閉じてスマホ連絡先の最初の人に「元気？」と送って',
+    ],
+    normal: [
+      '30秒間一番面白い顔をキープして','この場にいる誰かのものまねをして',
+      '1分間笑わずにコメディ動画を見て','今すぐ外に向かって「愛してる！」と叫んで',
+      '隣の人の靴を履いて10歩歩いて','今の自分の気持ちをラップで表現して',
+      'スマホのカメラロールの10枚目を全員に見せて','この場にいる全員のいいところを30秒で言って',
+      '目を閉じてスマホ入力で自分の名前を打って','1分間椅子に座らずにいて',
+    ],
+    spicy: [
+      '今すぐお腹の出た状態で踊って','参加者全員に今日の正直な印象を言って',
+      '次の質問でどんな内容でも正直に答えると約束して','今すぐ誰かに謝りたいことを実際に謝って',
+      '1分間方言（選ばれた方言）で話し続けて','今の全員の席順を仲良さ順に並べ替えて（説明込み）',
+      '自分の一番恥ずかしいダンスを踊って','今すぐ感謝している人に電話して（繋がらなくてもOK）',
+      '30秒間ストレッチポーズをキープして','この場のルールを全部1分で説明して',
+    ],
+  },
+};
+
+let players = [];
+let selectedDiff = 'normal';
+let currentPlayerIdx = 0;
+let customCards = { truth: [], dare: [] };
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedDiff = btn.dataset.diff;
+    document.querySelectorAll('.diff-btn').forEach(b => b.className = 'diff-btn flex-1 py-2 rounded font-bold bg-gray-700');
+    btn.className = 'diff-btn flex-1 py-2 rounded font-bold bg-pink-600';
+  });
+});
+document.querySelector('[data-diff="normal"]').className = 'diff-btn flex-1 py-2 rounded font-bold bg-pink-600';
+
+document.getElementById('add-player').addEventListener('click', () => {
+  const name = document.getElementById('player-name').value.trim();
+  if (!name) return;
+  if (players.length >= 10) { alert('最大10人です'); return; }
+  players.push(name);
+  document.getElementById('player-name').value = '';
+  renderPlayers();
+});
+document.getElementById('player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('add-player').click();
+});
+
+function renderPlayers() {
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  players.forEach((p, i) => {
+    const badge = document.createElement('div');
+    badge.className = 'flex items-center gap-1 bg-gray-700 rounded-full px-3 py-1 text-sm';
+    const name = document.createElement('span');
+    name.textContent = p;
+    const del = document.createElement('button');
+    del.className = 'text-gray-500 hover:text-red-400 ml-1';
+    del.textContent = '×';
+    del.setAttribute('aria-label', p + 'を削除');
+    del.dataset.idx = i;
+    del.addEventListener('click', () => {
+      players.splice(parseInt(del.dataset.idx), 1);
+      renderPlayers();
+    });
+    badge.appendChild(name);
+    badge.appendChild(del);
+    list.appendChild(badge);
+  });
+}
+
+document.getElementById('add-card').addEventListener('click', () => {
+  const type = document.getElementById('custom-type').value;
+  const text = document.getElementById('custom-card').value.trim();
+  if (!text) return;
+  customCards[type].push(text);
+  document.getElementById('custom-card').value = '';
+  alert('カスタムカードを追加しました！');
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  if (players.length < 2) { alert('2人以上必要です'); return; }
+  currentPlayerIdx = 0;
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  updateCurrentPlayer();
+});
+
+function updateCurrentPlayer() {
+  document.getElementById('current-player').textContent = players[currentPlayerIdx];
+  document.getElementById('card-display').classList.add('hidden');
+  document.getElementById('next-round').classList.add('hidden');
+}
+
+function getRandomCard(type) {
+  const pool = [...cards[type][selectedDiff], ...customCards[type]];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+document.getElementById('truth-btn').addEventListener('click', () => {
+  const text = getRandomCard('truth');
+  document.getElementById('card-type-badge').textContent = '🤔 真実';
+  document.getElementById('card-type-badge').className = 'inline-block px-3 py-1 rounded text-sm font-bold mb-3 bg-blue-700';
+  document.getElementById('card-text').textContent = text;
+  document.getElementById('card-display').classList.remove('hidden');
+  document.getElementById('next-round').classList.remove('hidden');
+});
+
+document.getElementById('dare-btn').addEventListener('click', () => {
+  const text = getRandomCard('dare');
+  document.getElementById('card-type-badge').textContent = '💪 チャレンジ';
+  document.getElementById('card-type-badge').className = 'inline-block px-3 py-1 rounded text-sm font-bold mb-3 bg-red-700';
+  document.getElementById('card-text').textContent = text;
+  document.getElementById('card-display').classList.remove('hidden');
+  document.getElementById('next-round').classList.remove('hidden');
+});
+
+document.getElementById('next-round').addEventListener('click', () => {
+  currentPlayerIdx = (currentPlayerIdx + 1) % players.length;
+  updateCurrentPlayer();
+});
+
+document.getElementById('end-game').addEventListener('click', () => {
+  document.getElementById('game-screen').classList.add('hidden');
+  document.getElementById('setup-screen').classList.remove('hidden');
+});
+</script>
+</body>
+</html>
